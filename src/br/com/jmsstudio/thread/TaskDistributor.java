@@ -1,14 +1,12 @@
 package br.com.jmsstudio.thread;
 
-import br.com.jmsstudio.command.DefaultCommand;
-import br.com.jmsstudio.command.ExecuteCommand;
-import br.com.jmsstudio.command.RunCommand;
+import br.com.jmsstudio.command.*;
 import br.com.jmsstudio.server.ServerTask;
 
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.Scanner;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 
 public class TaskDistributor implements Runnable {
 
@@ -18,6 +16,7 @@ public class TaskDistributor implements Runnable {
 
     public static final String RUN_COMMAND = "RUN";
     public static final String EXEC_COMMAND = "EXEC";
+    public static final String FETCH_COMMAND = "FETCH";
     public static final String TEST_COMMAND = "TEST";
     public static final String SHUTDOWN_COMMAND = "SHUTDOWN";
 
@@ -50,6 +49,32 @@ public class TaskDistributor implements Runnable {
                     case RUN_COMMAND:
                         commandToBeExecuted = new RunCommand(writer);
                         this.threadPool.execute(commandToBeExecuted);
+                        break;
+                    case FETCH_COMMAND:
+
+                        FetchWSCommand fetchWSCommand = new FetchWSCommand(writer);
+                        FetchDBCommand fetchDBCommand = new FetchDBCommand(writer);
+
+                        Future<String> futureDB = this.threadPool.submit(fetchDBCommand);
+                        Future<String> futureWS = this.threadPool.submit(fetchWSCommand);
+
+                        Runnable joinResult = () -> {
+                            try {
+                                String resultDB = futureDB.get(20, TimeUnit.SECONDS);
+                                String resultWS = futureWS.get(20, TimeUnit.SECONDS);
+
+                                writer.println(resultDB);
+                                writer.println(resultWS);
+
+                            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                                futureDB.cancel(true);
+                                futureWS.cancel(true);
+
+                                writer.println("An error ocurred while fetch data.");
+                            }
+                        };
+                        new Thread(joinResult).start();
+
                         break;
                     case TEST_COMMAND:
                         writer.println("Running " + TEST_COMMAND);

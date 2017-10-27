@@ -1,10 +1,14 @@
 package br.com.jmsstudio.command;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 public class FetchWSCommand implements Callable<String> {
@@ -28,7 +32,7 @@ public class FetchWSCommand implements Callable<String> {
 
         StringBuilder result = new StringBuilder();
 
-        String line = null;
+        String line;
         while ((line = bufferedReader.readLine()) != null) {
             result.append(line);
         }
@@ -37,6 +41,21 @@ public class FetchWSCommand implements Callable<String> {
 
         System.out.println("Finished fetching data from a web api");
 
-        return result.toString();
+        String json = result.toString();
+
+        Map map = parseJsonToMap(json);
+
+        String returnText = "";
+
+        if (map.get("type").equals("success")) {
+            returnText = "Data received: " + ((Map) map.get("value")).get("joke").toString();
+        }
+
+        return returnText;
+    }
+
+    private Map parseJsonToMap(String json) throws ScriptException {
+        ScriptEngine javascript = new ScriptEngineManager().getEngineByName("javascript");
+        return (Map) javascript.eval("Java.asJSONCompatible(" + json + ")");
     }
 }

@@ -21,7 +21,7 @@ public class FetchDBCommand implements Callable<String> {
 
         System.out.println("Finished fetching data from database");
 
-        String result = "no records found";
+        String result = "no records found in db";
 
         this.printStream.println("Query executed with success");
 

@@ -13,17 +13,19 @@ public class TaskDistributor implements Runnable {
     private Socket socket;
     private ServerTask serverTask;
     private ExecutorService threadPool;
+    private BlockingQueue<String> commandQueue;
 
-    public static final String RUN_COMMAND = "RUN";
+    public static final String ENQUEUE_COMMAND = "ENQUEUE";
     public static final String EXEC_COMMAND = "EXEC";
     public static final String FETCH_COMMAND = "FETCH";
     public static final String TEST_COMMAND = "TEST";
     public static final String SHUTDOWN_COMMAND = "SHUTDOWN";
 
-    public TaskDistributor(Socket socket, ServerTask serverTask, ExecutorService threadPool) {
+    public TaskDistributor(Socket socket, ServerTask serverTask, ExecutorService threadPool, BlockingQueue<String> commandQueue) {
         this.socket = socket;
         this.serverTask = serverTask;
         this.threadPool = threadPool;
+        this.commandQueue = commandQueue;
     }
 
     @Override
@@ -46,9 +48,12 @@ public class TaskDistributor implements Runnable {
                         commandToBeExecuted = new ExecuteCommand(writer);
                         this.threadPool.execute(commandToBeExecuted);
                         break;
-                    case RUN_COMMAND:
-                        commandToBeExecuted = new RunCommand(writer);
-                        this.threadPool.execute(commandToBeExecuted);
+                    case ENQUEUE_COMMAND:
+                        this.commandQueue.put(command);
+                        System.out.println("Command " + ENQUEUE_COMMAND + " added to the queue");
+
+                        RunEnqueuedCommand enqueuedCommand = new RunEnqueuedCommand(this.commandQueue, writer);
+                        this.threadPool.execute(enqueuedCommand);
                         break;
                     case FETCH_COMMAND:
 
